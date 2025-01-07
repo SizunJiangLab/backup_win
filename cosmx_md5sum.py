@@ -28,8 +28,8 @@ def setup_logging(
     """
     Configures logging to output messages to both a file and the console.
 
-    Parameters
-    ----------
+    Parameter
+    ---------
     log_file : str, optional
         Path to the log file. Default is 'output.log' in the current working directory.
     log_format : str, optional
@@ -43,7 +43,7 @@ def setup_logging(
     stream_handler_level : int, optional
         Logging level for the StreamHandler (console output). Default is logging.WARNING.
 
-    Returns
+    Return
     -------
     None
         This function configures the logger and does not return any value.
@@ -164,15 +164,15 @@ def write_md5_from_dict(md5_dict: dict, output_file: str) -> None:
     """
     Write MD5 checksums from a dictionary to a file in `md5sum` format.
 
-    Parameters
+    Parameter
     ----------
     md5_dict : dict
         A dictionary containing the paths as keys and MD5 checksums as values.
     output_file : str
         The path to the file where the MD5 checksums will be saved.
 
-    Returns
-    -------
+    Return
+    ------
     None
 
     Notes
@@ -203,6 +203,15 @@ def compare_md5(md5_file_1: str, md5_file_2: str, output_dir: str) -> None:
     ------
     None
     """
+
+    def read_md5_file(md5_file: str) -> pd.DataFrame:
+        data = []
+        with open(md5_file, "r", encoding="utf-8") as f:
+            for line in f:
+                md5, file = line.split("  ", 1)
+                data.append({"md5": md5.strip(), "file": file.strip()})
+        return pd.DataFrame(data)
+
     output_dir = Path(output_dir)
     output_log = output_dir / "md5sum.log"
     output_md5 = output_dir / "md5sum.csv"
@@ -211,8 +220,8 @@ def compare_md5(md5_file_1: str, md5_file_2: str, output_dir: str) -> None:
 
     setup_logging(output_log)
 
-    df_1 = pd.read_csv(md5_file_1, sep=r"\s+", names=["md5_1", "file"], engine="python")
-    df_2 = pd.read_csv(md5_file_2, sep=r"\s+", names=["md5_2", "file"], engine="python")
+    df_1 = read_md5_file(md5_file_1).rename(columns={"md5": "md5_1"})
+    df_2 = read_md5_file(md5_file_2).rename(columns={"md5": "md5_2"})
 
     df_md5 = df_1.merge(df_2, on="file", how="outer")[["file", "md5_1", "md5_2"]]
     df_md5.to_csv(output_md5, index=False)
@@ -226,8 +235,10 @@ def compare_md5(md5_file_1: str, md5_file_2: str, output_dir: str) -> None:
             logging.error(f"{row['file']}: MD5 checksums do not match.")
     else:
         print("Integrity test passed. All MD5 checksums match.")
+        logging.info("Integrity test passed. All MD5 checksums match.")
 
 
+# %%
 ################################################################################
 # Main function
 ################################################################################
@@ -255,32 +266,29 @@ def run_md5_compare(path_1, path_2, output_dir):
     compare_md5(output_1, output_2, output_dir)
 
 
-if __name__ == "__main__":
-    path_1 = "/mnt/nfs/home/wenruiwu/projects/backup/data/test_1"
-    path_2 = "/mnt/nfs/home/wenruiwu/projects/backup/data/test_2"
-    tag = time.strftime("%Y%m%d_%H%M%S")
-    output_dir = f"/mnt/nfs/home/wenruiwu/projects/backup/data/output/{tag}"
-    run_md5_compare(path_1, path_2, output_dir)
-
 # if __name__ == "__main__":
-#     ############################################################################
-#     cosmx_name = "testname_tmaname_sectionid_version"
-#     ############################################################################
-
-#     dir_cosmx = Path("/mnt/nfs/storage/CosMX") / cosmx_name
-#     path_1 = dir_cosmx / "AtoMx"
-#     path_2 = dir_cosmx / "AtoMx_copy"
-
-#     if not path_1.exists():
-#         raise FileNotFoundError("AtoMx not found.")
-#     if not path_2.exists():
-#         raise FileNotFoundError("AtoMx_copy not found.")
-
+#     path_1 = "/mnt/nfs/home/wenruiwu/projects/backup/data/test_1"
+#     path_2 = "/mnt/nfs/home/wenruiwu/projects/backup/data/test_2"
 #     tag = time.strftime("%Y%m%d_%H%M%S")
-#     output_dir = Path("/mnt/nfs/storage/cosmx_md5sum") / cosmx_name / tag
-#     output_dir.mkdir(parents=True, exist_ok=True)
-
+#     output_dir = f"/mnt/nfs/home/wenruiwu/projects/backup/data/output/{tag}"
 #     run_md5_compare(path_1, path_2, output_dir)
 
+if __name__ == "__main__":
+    ############################################################################
+    cosmx_name = "testname_tmaname_sectionid_version"
+    ############################################################################
 
-# %%
+    dir_cosmx = Path("/mnt/nfs/storage/CosMX") / cosmx_name
+    path_1 = dir_cosmx / "AtoMx"
+    path_2 = dir_cosmx / "AtoMx_copy"
+
+    if not path_1.exists():
+        raise FileNotFoundError("AtoMx not found.")
+    if not path_2.exists():
+        raise FileNotFoundError("AtoMx_copy not found.")
+
+    tag = time.strftime("%Y%m%d_%H%M%S")
+    output_dir = Path("/mnt/nfs/storage/cosmx_md5sum") / cosmx_name / tag
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    run_md5_compare(path_1, path_2, output_dir)
