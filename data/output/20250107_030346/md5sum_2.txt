@@ -1,0 +1,2 @@
+ec765c38bde0fb5c9ec7b65661634c6a  same.txt
+0fa9de1afde8eb72c616efd2ca57757b  folder/different.txt

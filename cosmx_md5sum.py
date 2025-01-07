@@ -204,15 +204,19 @@ def compare_md5(md5_file_1: str, md5_file_2: str, output_dir: str) -> None:
     None
     """
     output_dir = Path(output_dir)
-    output_log = output_dir / "checksum.log"
-    output_diff = output_dir / "checksum_diff.txt"
+    output_log = output_dir / "md5sum.log"
+    output_md5 = output_dir / "md5sum.csv"
+    output_diff = output_dir / "md5sum_diff.csv"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     setup_logging(output_log)
 
     df_1 = pd.read_csv(md5_file_1, sep=r"\s+", names=["md5_1", "file"], engine="python")
     df_2 = pd.read_csv(md5_file_2, sep=r"\s+", names=["md5_2", "file"], engine="python")
+
     df_md5 = df_1.merge(df_2, on="file", how="outer")[["file", "md5_1", "md5_2"]]
+    df_md5.to_csv(output_md5, index=False)
+
     df_md5_diff = df_md5[df_md5["md5_1"] != df_md5["md5_2"]]
     df_md5_diff.to_csv(output_diff, index=False)
 
@@ -251,32 +255,32 @@ def run_md5_compare(path_1, path_2, output_dir):
     compare_md5(output_1, output_2, output_dir)
 
 
-# if __name__ == "__main__":
-#     path_1 = "/mnt/nfs/home/wenruiwu/projects/backup/data/test_1"
-#     path_2 = "/mnt/nfs/home/wenruiwu/projects/backup/data/test_2"
-#     tag = time.strftime("%Y%m%d_%H%M%S")
-#     output_dir = f"/mnt/nfs/home/wenruiwu/projects/backup/data/output/{tag}"
-#     run_md5_compare(path_1, path_2, output_dir)
-
 if __name__ == "__main__":
-    ############################################################################
-    cosmx_name = "testname_tmaname_sectionid_version"
-    ############################################################################
-
-    dir_cosmx = Path("/mnt/nfs/storage/CosMX") / cosmx_name
-    path_1 = dir_cosmx / "AtoMx"
-    path_2 = dir_cosmx / "AtoMx_copy"
-
-    if not path_1.exists():
-        raise FileNotFoundError("AtoMx not found.")
-    if not path_2.exists():
-        raise FileNotFoundError("AtoMx_copy not found.")
-
+    path_1 = "/mnt/nfs/home/wenruiwu/projects/backup/data/test_1"
+    path_2 = "/mnt/nfs/home/wenruiwu/projects/backup/data/test_2"
     tag = time.strftime("%Y%m%d_%H%M%S")
-    output_dir = Path("/mnt/nfs/storage/cosmx_md5sum") / cosmx_name / tag
-    output_dir.mkdir(parents=True, exist_ok=True)
-
+    output_dir = f"/mnt/nfs/home/wenruiwu/projects/backup/data/output/{tag}"
     run_md5_compare(path_1, path_2, output_dir)
+
+# if __name__ == "__main__":
+#     ############################################################################
+#     cosmx_name = "testname_tmaname_sectionid_version"
+#     ############################################################################
+
+#     dir_cosmx = Path("/mnt/nfs/storage/CosMX") / cosmx_name
+#     path_1 = dir_cosmx / "AtoMx"
+#     path_2 = dir_cosmx / "AtoMx_copy"
+
+#     if not path_1.exists():
+#         raise FileNotFoundError("AtoMx not found.")
+#     if not path_2.exists():
+#         raise FileNotFoundError("AtoMx_copy not found.")
+
+#     tag = time.strftime("%Y%m%d_%H%M%S")
+#     output_dir = Path("/mnt/nfs/storage/cosmx_md5sum") / cosmx_name / tag
+#     output_dir.mkdir(parents=True, exist_ok=True)
+
+#     run_md5_compare(path_1, path_2, output_dir)
 
 
 # %%
