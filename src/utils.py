@@ -75,13 +75,54 @@ def setup_logging(
 ################################################################################
 # SFTP download
 ################################################################################
+
+
+def list_all_files(sftp, remote_path: str) -> list[str]:
+    """
+    Traverse all files in a directory and its subdirectories (non-recursive).
+
+    Parameter
+    ---------
+    sftp : pysftp.Connection or paramiko.SFTPClient
+        The SFTP connection object used to interact with the remote server.
+    remote_path : str
+        The root directory path to start the traversal.
+
+    Return
+    ------
+    list of str
+        A list of full paths to all files found in the specified directory and its subdirectories.
+    """
+    # Initialize the queue with the root directory
+    queue = [remote_path]
+    all_files = []
+
+    while queue:
+        # Dequeue the first directory from the queue
+        current_path = queue.pop(0)
+        logging.info(
+            f"Processing: {current_path} (remaining dirs: {len(queue)}, found files: {len(all_files)})"
+        )
+
+        # List items in the current directory
+        for item in sftp.listdir(current_path):
+            full_path = f"{current_path}/{item}"
+            # If it's a file, add it to the list
+            if sftp.isfile(full_path):
+                all_files.append(full_path)
+            # If it's a directory, add it to the queue
+            elif sftp.isdir(full_path):
+                queue.append(full_path)
+
+    return all_files
+
+
 def download_folder(sftp, dir_remote: str, dir_local: str) -> None:
     """
-    Recursively download a remote directory and its contents from an SFTP server
-    to a local directory.
+    Download a remote directory and its contents from an SFTP server
 
-    Parameters
-    ----------
+    Parameter
+    ---------
     sftp : pysftp.Connection
         The active SFTP connection.
     dir_remote : str
@@ -89,36 +130,34 @@ def download_folder(sftp, dir_remote: str, dir_local: str) -> None:
     dir_local : str
         The path to the local directory where files will be saved.
 
-    Returns
-    -------
+    Return
+    ------
     None
     """
     # Ensure local directory exist
     os.makedirs(dir_local, exist_ok=True)
 
-    # Iterate through items in the remote directory
-    for item in sftp.listdir_attr(dir_remote):
-        item_path_remote = f"{dir_remote}/{item.filename}"
-        item_path_local = os.path.join(dir_local, item.filename)
+    # Get all files in the remote directory
+    all_files = list_all_files(sftp, dir_remote)
+    logging.info(f"Found {len(all_files)} files in {dir_remote}")
 
-        if item.longname.startswith("d"):
-            # Recursively download folders
-            download_folder(sftp, item_path_remote, item_path_local)
-        else:
-            # Download file to local directory
-            sftp.get(item_path_remote, item_path_local)
-            logging.info(f"Downloaded {item_path_remote} to {item_path_local}")
+    # Download files to the local directory
+    for file_remote in tqdm(all_files, desc="Downloading"):
+        file_name = os.path.relpath(file_remote, dir_remote)
+        file_local = os.path.join(dir_local, file_name)
+        sftp.get(file_remote, file_local)
+        logging.info(f"Downloaded {file_remote} to {file_local}")
 
 
 def download_folder_2copy(
     sftp, dir_remote: str, dir_local_1: str, dir_local_2: str
 ) -> None:
     """
-    Recursively download a remote directory and its contents from an SFTP server
+    Download a remote directory and its contents from an SFTP server
     to two local directories.
 
-    Parameters
-    ----------
+    Parameter
+    ---------
     sftp : pysftp.Connection
         The active SFTP connection.
     dir_remote : str
@@ -128,8 +167,8 @@ def download_folder_2copy(
     dir_local_2 : str
         The path to the second local directory where files will be saved.
 
-    Returns
-    -------
+    Return
+    ------
     None
         This function does not return anything.
     """
@@ -137,23 +176,21 @@ def download_folder_2copy(
     os.makedirs(dir_local_1, exist_ok=True)
     os.makedirs(dir_local_2, exist_ok=True)
 
-    # Iterate through items in the remote directory
-    for item in sftp.listdir_attr(dir_remote):
-        item_path_remote = f"{dir_remote}/{item.filename}"
-        item_path_local_1 = os.path.join(dir_local_1, item.filename)
-        item_path_local_2 = os.path.join(dir_local_2, item.filename)
+    # Get all files in the remote directory
+    all_files = list_all_files(sftp, dir_remote)
+    logging.info(f"Found {len(all_files)} files in {dir_remote}")
 
-        if item.longname.startswith("d"):
-            # Recursively download folders
-            download_folder_2copy(
-                sftp, item_path_remote, item_path_local_1, item_path_local_2
-            )
-        else:
-            # Download file to both local directories
-            sftp.get(item_path_remote, item_path_local_1)
-            logging.info(f"Downloaded {item_path_remote} to {item_path_local_1}")
-            sftp.get(item_path_remote, item_path_local_2)
-            logging.info(f"Downloaded {item_path_remote} to {item_path_local_2}")
+    # Download files to the local directory
+    for file_remote in tqdm(all_files, desc="Downloading"):
+        file_name = os.path.relpath(file_remote, dir_remote)
+
+        file_local_1 = os.path.join(dir_local_1, file_name)
+        sftp.get(file_remote, file_local_1)
+        logging.info(f"Downloaded {file_remote} to {file_local_1}")
+
+        file_local_2 = os.path.join(dir_local_2, file_name)
+        sftp.get(file_remote, file_local_2)
+        logging.info(f"Downloaded {file_remote} to {file_local_2}")
 
 
 ################################################################################
