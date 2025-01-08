@@ -2,6 +2,7 @@
 import logging
 import os
 
+import pandas as pd
 import pysftp
 
 from src.utils import (
@@ -57,6 +58,17 @@ def run_sftp_md5sum(name_remote, name_local):
 
 # %%
 if __name__ == "__main__":
-    name_remote = "RCC_TMA541_section09_3ug_v132_06_01_2025_18_26_39_743"
-    name_local = "RCC_TMA541_section09_3ug_v132"
-    run_sftp_md5sum(name_remote, name_local)
+    df_params = pd.read_csv(
+        "/mnt/nfs/home/wenruiwu/projects/backup/data/df_run/shuli.csv"
+    )
+    for i, row in df_params.iterrows():
+        name_remote = row["name_atomx"]
+        name_local = row["name_storage"]
+        try:
+            run_sftp_md5sum(name_remote, name_local)
+        except Exception as e:
+            logging.error(f"Failed to process {name_local}: {e}")
+
+    # name_remote = "RCC_TMA541_section09_3ug_v132_06_01_2025_18_26_39_743"
+    # name_local = "RCC_TMA541_section09_3ug_v132"
+    # run_sftp_md5sum(name_remote, name_local)
