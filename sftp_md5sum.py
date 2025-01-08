@@ -1,7 +1,7 @@
 # %%
 import logging
 import os
-
+from tqdm import tqdm
 import pandas as pd
 import pysftp
 
@@ -11,6 +11,7 @@ from src.utils import (
     download_folder_2copy,
     setup_logging,
     write_md5_from_dict,
+    list_all_files,
 )
 
 
@@ -25,7 +26,7 @@ def run_sftp_md5sum(name_remote, name_local):
     log_file = os.path.join(dir_log, name_local, f"{name_local}.log")
     os.makedirs(os.path.dirname(log_file), exist_ok=True)
     setup_logging(
-        log_file, file_handler_level=logging.INFO, stream_handler_level=logging.INFO
+        log_file, file_handler_level=logging.INFO, stream_handler_level=logging.WARNING
     )
 
     # SFTP
@@ -38,8 +39,32 @@ def run_sftp_md5sum(name_remote, name_local):
     dir_local_2 = os.path.join(dir_sftp, name_local, "AtoMx_copy")
     with pysftp.Connection(host=hostname, username=username, password=password) as sftp:
         logging.info("Connected to SFTP server.")
-        download_folder_2copy(sftp, dir_remote, dir_local_1, dir_local_2)
-        logging.info(f"Download completed for {name_local}.")
+
+        # List all files in the remote directory
+        paths_remote = list_all_files(sftp, dir_remote)
+        logging.info(f"Found {len(paths_remote)} remote files in {dir_remote}.")
+        with open(os.path.join(dir_log, name_local, "paths_remote.txt"), "w") as f:
+            f.write("\n".join(paths_remote))
+
+        # Download files to local directories
+        ## Create local directories
+        relpaths = [os.path.relpath(path, dir_remote) for path in paths_remote]
+        paths_local_1 = [os.path.join(dir_local_1, relpath) for relpath in relpaths]
+        paths_local_2 = [os.path.join(dir_local_2, relpath) for relpath in relpaths]
+        dir_local_unique = set(
+            [os.path.dirname(path) for path in paths_local_1 + paths_local_2]
+        )
+        for dir_local in dir_local_unique:
+            os.makedirs(dir_local, exist_ok=True)
+        logging.info(f"Local directories created for {name_local}.")
+
+        ## Download
+        for i in tqdm(range(len(paths_remote)), desc="Downloading files"):
+            sftp.get(paths_remote[i], paths_local_1[i])
+            logging.info(f"Downloaded {paths_remote[i]} to AtoMx.")
+            sftp.get(paths_remote[i], paths_local_2[i])
+            logging.info(f"Downloaded {paths_remote[i]} to AtoMx_copy.")
+        logging.info(f"Downloaded all files to local directories for {name_local}.")
 
     # MD5 comparison
     output_dir = os.path.join(dir_log, name_local, "md5sum")
@@ -47,10 +72,8 @@ def run_sftp_md5sum(name_remote, name_local):
     path_md5sum_1 = os.path.join(output_dir, "AtoMx.txt")
     path_md5sum_2 = os.path.join(output_dir, "AtoMx_copy.txt")
 
-    md5_dict_1 = calculate_md5_md5sum_batch(dir_local_1, pb_desc="md5sum for AtoMx")
-    md5_dict_2 = calculate_md5_md5sum_batch(
-        dir_local_2, pb_desc="md5sum for AtoMx_copy"
-    )
+    md5_dict_1 = calculate_md5_md5sum_batch(dir_local_1, pb_desc="AtoMx md5sum")
+    md5_dict_2 = calculate_md5_md5sum_batch(dir_local_2, pb_desc="AtoMx_copy md5sum")
     write_md5_from_dict(md5_dict_1, path_md5sum_1)
     write_md5_from_dict(md5_dict_2, path_md5sum_2)
     compare_md5(path_md5sum_1, path_md5sum_2, output_dir)
