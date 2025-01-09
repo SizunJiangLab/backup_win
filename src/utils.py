@@ -77,7 +77,9 @@ def setup_logging(
 ################################################################################
 
 
-def sftp_get_list_of_files(sftp, dir_remote: str) -> list[str]:
+def sftp_get_list_of_files(
+    sftp, dir_remote: str, pb_desc: str = "Finding files"
+) -> list[str]:
     """
     Walks remote directory tree and returns list of files.
 
@@ -102,7 +104,7 @@ def sftp_get_list_of_files(sftp, dir_remote: str) -> list[str]:
         pass
 
     files = []
-    progress = tqdm(desc="Files found", leave=True)
+    progress = tqdm(desc=pb_desc, unit=" file", leave=True)
     sftp.walktree(
         dir_remote,
         fcallback=progress_callback,
@@ -249,7 +251,7 @@ def write_md5_from_dict(md5_dict: dict, output_file: str) -> None:
             f_out.write(f"{md5_checksum}  {file_path}\n")
 
 
-def compare_md5(md5_file_1: str, md5_file_2: str, output_dir: str) -> None:
+def compare_md5(md5_file_1: str, md5_file_2: str, output_dir: str) -> bool:
     """
     Compare two MD5 checksum files and log any differences.
 
@@ -264,7 +266,8 @@ def compare_md5(md5_file_1: str, md5_file_2: str, output_dir: str) -> None:
 
     Return
     ------
-    None
+    bool
+        True if all MD5 checksums match, False otherwise.
     """
 
     def read_md5_file(md5_file: str) -> pd.DataFrame:
@@ -293,6 +296,8 @@ def compare_md5(md5_file_1: str, md5_file_2: str, output_dir: str) -> None:
         print("Integrity test failed. See the log file for details.")
         for _, row in df_md5_diff.iterrows():
             logging.error(f"{row['file']}: MD5 checksums do not match.")
+        return False
     else:
         print("Integrity test passed. All MD5 checksums match.")
         logging.info("Integrity test passed. All MD5 checksums match.")
+        return True
