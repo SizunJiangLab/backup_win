@@ -1,26 +1,32 @@
 # %%
 import logging
 import os
-from tqdm import tqdm
+
 import pandas as pd
 import pysftp
+from tqdm import tqdm
 
 from src.utils import (
     calculate_md5_md5sum_batch,
     compare_md5,
-    download_folder_2copy,
     setup_logging,
+    sftp_get_list_of_files,
     write_md5_from_dict,
-    list_all_files,
 )
 
 
 def run_sftp_md5sum(name_remote, name_local):
-    print(f"Processing: {name_local}")
-
+    """
+    Download files from SFTP server and compare MD5 checksums.
+    """
     # Directories
+    ## Remote
+    dir_remote = os.path.join("/", name_remote)
+    ## Local
     dir_log = "/mnt/nfs/storage/cosmx_log"
     dir_sftp = "/mnt/nfs/storage/cosmx_backup/"
+    dir_local_1 = os.path.join(dir_sftp, name_local, "AtoMx")
+    dir_local_2 = os.path.join(dir_sftp, name_local, "AtoMx_copy")
 
     # Logging
     log_file = os.path.join(dir_log, name_local, f"{name_local}.log")
@@ -33,15 +39,13 @@ def run_sftp_md5sum(name_remote, name_local):
     hostname = "na.export.atomx.nanostring.com"
     username = "sjiang3@bidmc.harvard.edu"
     password = "JiangLab123!"
+    # sftp = pysftp.Connection(host=hostname, username=username, password=password)
 
-    dir_remote = os.path.join("/", name_remote)
-    dir_local_1 = os.path.join(dir_sftp, name_local, "AtoMx")
-    dir_local_2 = os.path.join(dir_sftp, name_local, "AtoMx_copy")
     with pysftp.Connection(host=hostname, username=username, password=password) as sftp:
         logging.info("Connected to SFTP server.")
 
         # List all files in the remote directory
-        paths_remote = list_all_files(sftp, dir_remote)
+        paths_remote = sftp_get_list_of_files(sftp, dir_remote)
         logging.info(f"Found {len(paths_remote)} remote files in {dir_remote}.")
         with open(os.path.join(dir_log, name_local, "paths_remote.txt"), "w") as f:
             f.write("\n".join(paths_remote))
