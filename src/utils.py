@@ -77,44 +77,41 @@ def setup_logging(
 ################################################################################
 
 
-def list_all_files(sftp, remote_path: str) -> list[str]:
+def sftp_get_list_of_files(sftp, dir_remote: str) -> list[str]:
     """
-    Traverse all files in a directory and its subdirectories (non-recursive).
+    Walks remote directory tree and returns list of files.
 
     Parameter
     ---------
-    sftp : pysftp.Connection or paramiko.SFTPClient
-        The SFTP connection object used to interact with the remote server.
-    remote_path : str
-        The root directory path to start the traversal.
+    sftp : paramiko.SFTPClient
+        An active SFTP client connection.
+    dir_remote : str
+        Path of the remote directory to walk.
 
     Return
     ------
     list of str
-        A list of full paths to all files found in the specified directory and its subdirectories.
+        List of file paths in the remote directory.
     """
-    # Initialize the queue with the root directory
-    queue = [remote_path]
-    all_files = []
 
-    while queue:
-        # Dequeue the first directory from the queue
-        current_path = queue.pop(0)
-        logging.info(
-            f"Processing: {current_path} (remaining dirs: {len(queue)}, found files: {len(all_files)})"
-        )
+    def progress_callback(file_path):
+        files.append(file_path)
+        progress.update(1)  # Update the progress bar for each file
 
-        # List items in the current directory
-        for item in sftp.listdir(current_path):
-            full_path = f"{current_path}/{item}"
-            # If it's a file, add it to the list
-            if sftp.isfile(full_path):
-                all_files.append(full_path)
-            # If it's a directory, add it to the queue
-            elif sftp.isdir(full_path):
-                queue.append(full_path)
+    def do_nothing(*args, **kwargs):
+        pass
 
-    return all_files
+    files = []
+    progress = tqdm(desc="Files found", leave=True)
+    sftp.walktree(
+        dir_remote,
+        fcallback=progress_callback,
+        dcallback=do_nothing,
+        ucallback=do_nothing,
+    )
+    progress.close()
+
+    return files
 
 
 def download_folder(sftp, dir_remote: str, dir_local: str) -> None:
