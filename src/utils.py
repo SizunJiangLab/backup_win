@@ -114,80 +114,24 @@ def sftp_get_list_of_files(sftp, dir_remote: str) -> list[str]:
     return files
 
 
-def download_folder(sftp, dir_remote: str, dir_local: str) -> None:
+def sftp_download_file(sftp, file_remote: str, file_local: str) -> None:
     """
-    Download a remote directory and its contents from an SFTP server
+    Download a single file from SFTP server to local.
 
     Parameter
     ---------
-    sftp : pysftp.Connection
-        The active SFTP connection.
-    dir_remote : str
-        The path to the remote directory to be downloaded.
-    dir_local : str
-        The path to the local directory where files will be saved.
-
-    Return
-    ------
-    None
+    sftp : paramiko.SFTPClient
+        An active SFTP client connection.
+    file_remote : str
+        Path of the file on the remote server.
+    file_local : str
+        Path to save the file locally.
     """
-    # Ensure local directory exist
-    os.makedirs(dir_local, exist_ok=True)
-
-    # Get all files in the remote directory
-    all_files = list_all_files(sftp, dir_remote)
-    logging.info(f"Found {len(all_files)} files in {dir_remote}")
-
-    # Download files to the local directory
-    for file_remote in tqdm(all_files, desc="Downloading"):
-        file_name = os.path.relpath(file_remote, dir_remote)
-        file_local = os.path.join(dir_local, file_name)
+    try:
         sftp.get(file_remote, file_local)
         logging.info(f"Downloaded {file_remote} to {file_local}")
-
-
-def download_folder_2copy(
-    sftp, dir_remote: str, dir_local_1: str, dir_local_2: str
-) -> None:
-    """
-    Download a remote directory and its contents from an SFTP server
-    to two local directories.
-
-    Parameter
-    ---------
-    sftp : pysftp.Connection
-        The active SFTP connection.
-    dir_remote : str
-        The path to the remote directory to be downloaded.
-    dir_local_1 : str
-        The path to the first local directory where files will be saved.
-    dir_local_2 : str
-        The path to the second local directory where files will be saved.
-
-    Return
-    ------
-    None
-        This function does not return anything.
-    """
-    # Ensure both local directories exist
-    os.makedirs(dir_local_1, exist_ok=True)
-    os.makedirs(dir_local_2, exist_ok=True)
-
-    # Get all files in the remote directory
-    all_files = list_all_files(sftp, dir_remote)
-    logging.info(f"Found {len(all_files)} files in {dir_remote}")
-
-    # Download files to the local directory
-    for file_remote in tqdm(all_files, desc="Downloading"):
-        file_name = os.path.relpath(file_remote, dir_remote)
-
-        file_local_1 = os.path.join(dir_local_1, file_name)
-        sftp.get(file_remote, file_local_1)
-        logging.info(f"Downloaded {file_remote} to {file_local_1}")
-
-        file_local_2 = os.path.join(dir_local_2, file_name)
-        sftp.get(file_remote, file_local_2)
-        logging.info(f"Downloaded {file_remote} to {file_local_2}")
+    except Exception as e:
+        logging.error(f"Failed to download {file_remote}: {e}")
 
 
 ################################################################################
