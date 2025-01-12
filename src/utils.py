@@ -8,6 +8,9 @@ from pathlib import Path
 import pandas as pd
 from tqdm import tqdm
 
+TQDM_FORMAT = "{desc}: {percentage:3.0f}%|{bar:15}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]"
+
+
 ################################################################################
 # Logging
 ################################################################################
@@ -215,7 +218,7 @@ def calculate_md5_md5sum_batch(
         path_files = [path_file for path_file in path.rglob("*") if path_file.is_file()]
 
     md5_dict = {}
-    for path_file in tqdm(path_files, desc=pb_desc):
+    for path_file in tqdm(path_files, desc=pb_desc, bar_format=TQDM_FORMAT):
         try:
             md5_checksum = calculate_md5_md5sum(path_file)
             md5_dict[str(path_file.relative_to(path))] = md5_checksum

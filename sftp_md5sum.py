@@ -13,6 +13,8 @@ from src.utils import (
     write_md5_from_dict,
 )
 
+TQDM_FORMAT = "{desc}: {percentage:3.0f}%|{bar:15}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]"
+
 
 def run_sftp_md5sum(name_remote, name_local):
     """
@@ -64,7 +66,11 @@ def run_sftp_md5sum(name_remote, name_local):
         logging.info(f"Local directories created for {name_local}.")
 
         ## Download
-        for i in tqdm(range(len(paths_remote)), desc=f"{name_local}|Downloading"):
+        for i in tqdm(
+            range(len(paths_remote)),
+            desc=f"{name_local}|Downloading",
+            bar_format=TQDM_FORMAT,
+        ):
             sftp.get(paths_remote[i], paths_local_1[i])
             logging.info(f"Downloaded {paths_remote[i]} to AtoMx.")
             sftp.get(paths_remote[i], paths_local_2[i])
