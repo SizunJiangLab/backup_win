@@ -1,0 +1,13 @@
+[project]
+name = "backup-win"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "ipykernel>=6.29.5",
+    "pathlib>=1.0.1",
+    "rich>=14.0.0",
+    "tqdm>=4.67.1",
+    "typing>=3.10.0.0",
+]
