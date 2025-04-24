@@ -32,7 +32,8 @@ Create or edit `config.json` with the following options:
    "log_dir": "/path/to/logs",
    "verify_copy": true,
    "delete_source": false,
-   "excluded_patterns": []
+   "excluded_patterns": [],
+   "backup_age_days": 30
 }
 ```
 
@@ -44,6 +45,7 @@ Create or edit `config.json` with the following options:
 - `verify_copy`: Enable MD5 checksum verification (default: true)
 - `delete_source`: Delete source folders after successful backup (default: false)
 - `excluded_patterns`: List of glob patterns for folders to exclude
+- `backup_age_days`: Number of days a folder must be unmodified to be eligible for backup (default: 30)
 
 ## Backup Strategy
 
@@ -68,13 +70,16 @@ python backup.py
 - `-c`, `--config`: Configuration file path (default: config.json)
 - `--src`: Override source directory from config
 - `--dst`: Override destination directory from config
+- `--log-dir`: Override log directory from config
 - `--no-verify`: Skip file verification
 - `--delete-source`: Delete source files after backup
+- `--exclude`: File patterns to exclude (can be used multiple times)
+- `--backup-age-days`: Number of days a folder must be unmodified to be eligible for backup (default: 30)
 
 Example with command line options:
 
 ```bash
-python backup.py --src /data/source --dst /data/backup --no-verify
+python backup.py --src /data/source --dst /data/backup --log-dir /data/logs --backup-age-days 45 --exclude "*.tmp" --exclude "*.log" --no-verify
 ```
 
 ## Output Structure

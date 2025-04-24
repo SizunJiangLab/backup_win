@@ -24,10 +24,25 @@ def parse_args():
         help="Destination directory path (optional, overrides config file setting)",
     )
     parser.add_argument(
+        "--log-dir",
+        help="Directory for storing logs (optional, overrides config file setting)",
+    )
+    parser.add_argument(
         "--no-verify", action="store_true", help="Skip file verification"
     )
     parser.add_argument(
         "--delete-source", action="store_true", help="Delete source files after backup"
+    )
+    parser.add_argument(
+        "--exclude",
+        action="append",
+        help="File patterns to exclude (can be used multiple times)",
+        default=None,
+    )
+    parser.add_argument(
+        "--backup-age-days",
+        type=int,
+        help="Number of days a folder must be unmodified to be eligible for backup (default: 30)",
     )
     return parser.parse_args()
 
@@ -44,10 +59,16 @@ def main():
             manager.config["src_dir"] = args.src
         if args.dst:
             manager.config["dst_dir"] = args.dst
+        if args.log_dir:
+            manager.config["log_dir"] = args.log_dir
         if args.no_verify:
             manager.config["verify_copy"] = False
         if args.delete_source:
             manager.config["delete_source"] = True
+        if args.exclude:
+            manager.config["excluded_patterns"] = args.exclude
+        if args.backup_age_days:
+            manager.config["backup_age_days"] = args.backup_age_days
 
         # Validate required configuration
         if not manager.config["src_dir"] or not manager.config["dst_dir"]:

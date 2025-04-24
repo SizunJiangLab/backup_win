@@ -18,8 +18,9 @@ class BackupManager:
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.config = self.load_config(config_path)
         self.setup_logging()
-        # Number of seconds in a month
-        self.one_month_seconds = 30 * 24 * 60 * 60
+        # Calculate seconds from days in config (default to 30 if not set)
+        backup_age_days = self.config.get("backup_age_days", 30)
+        self.backup_age_seconds = backup_age_days * 24 * 60 * 60
 
     def load_config(self, config_path: str) -> dict:
         """
@@ -38,7 +39,7 @@ class BackupManager:
         """
         log_dir = Path(self.config["log_dir"])
         log_dir.mkdir(exist_ok=True)
-        log_file = log_dir / f"backup_{self.timestamp}.log"
+        log_file = log_dir / f"{self.timestamp}_backup.log"
 
         logging.basicConfig(
             level=logging.INFO,
@@ -152,7 +153,7 @@ class BackupManager:
         for file in failed:
             report.append(f"- {file}")
 
-        report_path = Path(self.config["log_dir"]) / f"report_{self.timestamp}.txt"
+        report_path = Path(self.config["log_dir"]) / f"{self.timestamp}_report.txt"
         with open(report_path, "w", encoding="utf-8") as f:
             f.write("\n".join(report))
 
@@ -161,7 +162,7 @@ class BackupManager:
     def should_backup_subfolder(self, subfolder: Path) -> bool:
         """
         Check if a subfolder needs to be backed up
-        Condition: All files in the folder haven't been modified in the last month
+        Condition: All files in the folder haven't been modified in the configured number of days
         """
         now = datetime.now().timestamp()
 
@@ -171,8 +172,8 @@ class BackupManager:
                     last_modified = file_path.stat().st_mtime
                     time_diff = now - last_modified
 
-                    # Skip the entire folder if any file was modified within a month
-                    if time_diff < self.one_month_seconds:
+                    # Skip the entire folder if any file was modified within the configured time
+                    if time_diff < self.backup_age_seconds:
                         self.logger.info(
                             f"Skipping subfolder {subfolder} - recent changes detected"
                         )
