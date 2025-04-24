@@ -14,9 +14,14 @@ console = Console()
 
 
 class BackupManager:
-    def __init__(self, config_path: str):
+    def __init__(self, config_path: str, config_overrides: dict = None):
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.config = self.load_config(config_path)
+
+        # Apply config overrides if provided
+        if config_overrides:
+            self.config.update(config_overrides)
+
         self.setup_logging()
         # Calculate seconds from days in config (default to 30 if not set)
         backup_age_days = self.config.get("backup_age_days", 30)
@@ -282,6 +287,14 @@ class BackupManager:
         except Exception as e:
             self.logger.error(f"Error during backup process: {str(e)}")
             raise
+
+    def update_config(self, updates: dict):
+        """Update the configuration with new values.
+
+        Args:
+            updates (dict): Dictionary containing the configuration updates
+        """
+        self.config.update(updates)
 
 
 # %%

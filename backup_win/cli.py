@@ -51,24 +51,27 @@ def main():
     args = parse_args()
 
     try:
-        # Initialize backup manager
-        manager = BackupManager(args.config)
-
-        # Override config file settings if command line arguments are provided
+        # Initialize backup manager with config file first
+        config_overrides = {}
         if args.src:
-            manager.config["src_dir"] = args.src
+            config_overrides["src_dir"] = args.src
         if args.dst:
-            manager.config["dst_dir"] = args.dst
+            config_overrides["dst_dir"] = args.dst
         if args.log_dir:
-            manager.config["log_dir"] = args.log_dir
+            config_overrides["log_dir"] = args.log_dir
         if args.no_verify:
-            manager.config["verify_copy"] = False
+            config_overrides["verify_copy"] = False
         if args.delete_source:
-            manager.config["delete_source"] = True
+            config_overrides["delete_source"] = True
         if args.exclude:
-            manager.config["excluded_patterns"] = args.exclude
-        if args.backup_age_days:
-            manager.config["backup_age_days"] = args.backup_age_days
+            config_overrides["excluded_patterns"] = args.exclude
+        if (
+            args.backup_age_days is not None
+        ):  # Changed this condition to properly handle 0
+            config_overrides["backup_age_days"] = args.backup_age_days
+
+        # Initialize backup manager with config file and overrides
+        manager = BackupManager(args.config, config_overrides)
 
         # Validate required configuration
         if not manager.config["src_dir"] or not manager.config["dst_dir"]:
