@@ -2,7 +2,7 @@
 import sys
 import argparse
 from pathlib import Path
-from backup_win.utils import BackupManager
+from .utils import BackupManager
 from rich.console import Console
 
 console = Console()
