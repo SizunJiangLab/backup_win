@@ -1,0 +1,8 @@
+{
+    "src_dir": "/mnt/nfs/home/wenruiwu/projects/backup_win/data",
+    "dst_dir": "/mnt/nfs/home/wenruiwu/projects/backup_win/dst_dir",
+    "log_dir": "/mnt/nfs/home/wenruiwu/projects/backup_win/logs",
+    "verify_copy": true,
+    "delete_source": true,
+    "excluded_patterns": []
+}

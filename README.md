@@ -1,13 +1,15 @@
 # Windows Backup System
 
-A secure and reliable folder backup tool that supports file integrity verification and progress tracking with rich console output.
+A secure and reliable folder backup tool that supports intelligent subfolder backup with time-based filtering, file integrity verification and progress tracking with rich console output.
 
 ## Main Features
 
+- Intelligent subfolder backup with time-based filtering
+- Automatic detection of inactive subfolders (not modified in the last 30 days)
 - File integrity verification using MD5 checksum
 - Rich console output with progress bars
 - Detailed backup logs and reports
-- Optional source file deletion after backup
+- Optional source folder deletion after backup
 - Configurable file exclusion patterns
 - Command-line interface with configuration overrides
 
@@ -40,8 +42,18 @@ Create or edit `config.json` with the following options:
 - `dst_dir`: Destination directory for backups
 - `log_dir`: Directory for storing logs and reports
 - `verify_copy`: Enable MD5 checksum verification (default: true)
-- `delete_source`: Delete source files after successful backup (default: false)
-- `excluded_patterns`: List of glob patterns for files to exclude
+- `delete_source`: Delete source folders after successful backup (default: false)
+- `excluded_patterns`: List of glob patterns for folders to exclude
+
+## Backup Strategy
+
+The system implements an intelligent backup strategy:
+
+1. It only backs up subfolders where all files haven't been modified in the last 30 days
+2. Each backup creates a new timestamped folder in the destination directory
+3. Complete subfolder structure is preserved in the backup
+4. Optional source folder deletion after successful backup and verification
+5. Comprehensive verification ensures backup integrity
 
 ## Usage
 
@@ -65,13 +77,38 @@ Example with command line options:
 python backup.py --src /data/source --dst /data/backup --no-verify
 ```
 
-## Output Files
+## Output Structure
 
-The backup process generates the following files in the log directory:
+The backup process creates the following structure:
 
-- `backup_YYYYMMDD_HHMMSS.log`: Detailed backup operation log
-- `report_YYYYMMDD_HHMMSS.txt`: Backup summary report including:
-    - Start and end times
-    - Total duration
-    - Number of successful/failed files
-    - List of any failed files
+```tree
+dst_dir/YYYYMMDD_HHMMSS
+├── df_run
+│   └── files...
+├── output
+│   ├── folder1
+│   │   ├── md5sum_1.txt
+│   │   ├── md5sum_2.txt
+│   │   └── checksum_diff.txt
+│   └── folder2
+│       ├── md5sum.csv
+│       ├── md5sum_1.txt
+│       ├── md5sum_2.txt
+│       └── md5sum_diff.csv
+└── other_folders
+    └── ...
+
+logs
+├── backup_YYYYMMDD_HHMMSS.log
+└── report_YYYYMMDD_HHMMSS.txt
+```
+
+### Backup Report Contents
+
+The backup report includes:
+
+- Start and end times
+- Total duration
+- Number of successful/failed subfolder backups
+- List of any failed subfolders
+- Verification status for each backed up folder
