@@ -182,18 +182,32 @@ class BackupManager:
             dst_subfolder = timestamped_dst_dir / relative_path
 
             # Copy the entire folder
-            console.print("[yellow]Copying files...[/yellow]")
             dst_subfolder.mkdir(parents=True, exist_ok=True)
-            shutil.copytree(src_subfolder, dst_subfolder, dirs_exist_ok=True)
+            all_files = list(src_subfolder.rglob("*"))
+            all_files = [f for f in all_files if f.is_file()]
+            with Progress() as progress:
+                task = progress.add_task(
+                    f"[yellow]Copying {len(all_files)} files[/yellow]",
+                    total=len(all_files),
+                )
+                for src_file in all_files:
+                    dst_file = dst_subfolder / src_file.relative_to(src_subfolder)
+                    dst_file.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(src_file, dst_file)
+                    progress.update(task, advance=1)
 
             # Verify all files
-            console.print("[yellow]Verifying files...[/yellow]")
             if self.config["verify_copy"]:
-                for src_file in src_subfolder.rglob("*"):
-                    if src_file.is_file():
+                with Progress() as progress:
+                    task = progress.add_task(
+                        f"[yellow]Verifying {len(all_files)} files[/yellow]",
+                        total=len(all_files),
+                    )
+                    for src_file in all_files:
                         dst_file = dst_subfolder / src_file.relative_to(src_subfolder)
                         if not self.verify_files(src_file, dst_file):
                             raise ValueError(f"File verification failed for {src_file}")
+                        progress.update(task, advance=1)
             return True
         except Exception as e:
             self.logger.error(f"Failed to backup subfolder {src_subfolder}: {str(e)}")

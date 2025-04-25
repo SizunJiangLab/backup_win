@@ -1,0 +1,8 @@
+{
+    "src_dir": "D:\\Data\\Fusion",
+    "dst_dir": "Z:\\Storage",
+    "log_dir": "Z:\\Storage\\logs",
+    "verify_copy": true,
+    "delete_source": false,
+    "excluded_patterns": []
+}
