@@ -9,6 +9,7 @@ from typing import List
 
 from rich.console import Console
 from rich.progress import Progress
+from tqdm import tqdm
 
 console = Console()
 
@@ -53,73 +54,27 @@ class BackupManager:
         )
         self.logger = logging.getLogger(__name__)
 
-    def calculate_md5(self, file_path: Path) -> str:
-        """
-        Calculate the MD5 hash of a file.
-        """
-        hash_md5 = hashlib.md5()
-        with open(file_path, "rb") as f:
-            for chunk in iter(lambda: f.read(4096), b""):
-                hash_md5.update(chunk)
-        return hash_md5.hexdigest()
-
-    def get_files_to_backup(self) -> List[Path]:
-        """
-        Get a list of files to back up, excluding those matching the patterns in the config.
-        """
-        src_dir = Path(self.config["src_dir"])
-        files_to_backup = []
-        excluded = set(self.config["excluded_patterns"])
-
-        self.logger.info("Starting file scan (single-thread mode)...")
-        console.print("[cyan]Scanning file list...[/cyan]")
-
-        for path in src_dir.rglob("*"):
-            if path.is_file():
-                # Check if file is in exclude list
-                if not any(path.match(pattern) for pattern in excluded):
-                    files_to_backup.append(path)
-
-        console.print(
-            f"[green]Scan complete, found {len(files_to_backup)} files[/green]"
-        )
-        return files_to_backup
-
     def verify_files(self, src_file: Path, dst_file: Path) -> bool:
         """
         Verify if source and destination files are identical
         """
+
+        def calculate_md5(file_path: Path) -> str:
+            """
+            Calculate the MD5 hash of a file.
+            """
+            hash_md5 = hashlib.md5()
+            with open(file_path, "rb") as f:
+                for chunk in iter(lambda: f.read(4096), b""):
+                    hash_md5.update(chunk)
+            return hash_md5.hexdigest()
+
         try:
-            src_md5 = self.calculate_md5(src_file)
-            dst_md5 = self.calculate_md5(dst_file)
+            src_md5 = calculate_md5(src_file)
+            dst_md5 = calculate_md5(dst_file)
             return src_md5 == dst_md5
         except Exception as e:
             self.logger.error(f"File verification failed {src_file}: {str(e)}")
-            return False
-
-    def backup_file(self, src_file: Path, relative_path: Path) -> bool:
-        """
-        Backup a single file
-        """
-        try:
-            dst_dir = Path(self.config["dst_dir"])
-            timestamped_dst_dir = dst_dir / self.timestamp
-            dst_file = timestamped_dst_dir / relative_path
-
-            # Create destination directory
-            dst_file.parent.mkdir(parents=True, exist_ok=True)
-
-            # Copy file
-            shutil.copy2(src_file, dst_file)
-
-            # Verify file
-            if self.config["verify_copy"]:
-                if not self.verify_files(src_file, dst_file):
-                    raise ValueError("File verification failed")
-
-            return True
-        except Exception as e:
-            self.logger.error(f"Failed to backup file {src_file}: {str(e)}")
             return False
 
     def safe_delete_subfolder(self, path: Path) -> bool:
@@ -164,35 +119,33 @@ class BackupManager:
 
         self.logger.info(f"Backup report generated: {report_path}")
 
-    def should_backup_subfolder(self, subfolder: Path) -> bool:
-        """
-        Check if a subfolder needs to be backed up
-        Condition: All files in the folder haven't been modified in the configured number of days
-        """
-        now = datetime.now().timestamp()
-
-        try:
-            for file_path in subfolder.rglob("*"):
-                if file_path.is_file():
-                    last_modified = file_path.stat().st_mtime
-                    time_diff = now - last_modified
-
-                    # Skip the entire folder if any file was modified within the configured time
-                    if time_diff < self.backup_age_seconds:
-                        self.logger.info(
-                            f"Skipping subfolder {subfolder} - recent changes detected"
-                        )
-                        return False
-
-            return True
-        except Exception as e:
-            self.logger.error(f"Error checking subfolder {subfolder}: {str(e)}")
-            return False
-
     def get_subfolders_to_backup(self) -> List[Path]:
         """
         Get list of subfolders to backup
         """
+
+        def should_backup_subfolder(subfolder: Path) -> bool:
+            """
+            Check if a subfolder needs to be backed up
+                Condition: All files in the folder haven't been modified in the configured number of days
+            """
+            now = datetime.now().timestamp()
+            try:
+                for file_path in subfolder.rglob("*"):
+                    if file_path.is_file():
+                        last_modified = file_path.stat().st_mtime
+                        time_diff = now - last_modified
+                        # Skip the entire folder if any file was modified within the configured time
+                        if time_diff < self.backup_age_seconds:
+                            self.logger.info(
+                                f"Skipping subfolder {subfolder} - recent changes detected"
+                            )
+                            return False
+                return True
+            except Exception as e:
+                self.logger.error(f"Error checking subfolder {subfolder}: {str(e)}")
+                return False
+
         src_dir = Path(self.config["src_dir"])
         subfolders_to_backup = []
         excluded = set(self.config["excluded_patterns"])
@@ -206,7 +159,7 @@ class BackupManager:
                 if subfolder.is_dir():
                     # Check if folder is in exclude list
                     if not any(subfolder.match(pattern) for pattern in excluded):
-                        if self.should_backup_subfolder(subfolder):
+                        if should_backup_subfolder(subfolder):
                             subfolders_to_backup.append(subfolder)
                             self.logger.info(f"Subfolder {subfolder} queued for backup")
 
@@ -228,20 +181,19 @@ class BackupManager:
             relative_path = src_subfolder.relative_to(Path(self.config["src_dir"]))
             dst_subfolder = timestamped_dst_dir / relative_path
 
-            # Create destination folder
-            dst_subfolder.mkdir(parents=True, exist_ok=True)
-
             # Copy the entire folder
+            console.print("[yellow]Copying files...[/yellow]")
+            dst_subfolder.mkdir(parents=True, exist_ok=True)
             shutil.copytree(src_subfolder, dst_subfolder, dirs_exist_ok=True)
 
             # Verify all files
+            console.print("[yellow]Verifying files...[/yellow]")
             if self.config["verify_copy"]:
                 for src_file in src_subfolder.rglob("*"):
                     if src_file.is_file():
                         dst_file = dst_subfolder / src_file.relative_to(src_subfolder)
                         if not self.verify_files(src_file, dst_file):
                             raise ValueError(f"File verification failed for {src_file}")
-
             return True
         except Exception as e:
             self.logger.error(f"Failed to backup subfolder {src_subfolder}: {str(e)}")
@@ -263,23 +215,17 @@ class BackupManager:
             successful_backups = []
             failed_backups = []
 
-            with Progress() as progress:
-                backup_task = progress.add_task(
-                    "[green]Backing up subfolders...", total=len(subfolders)
+            total_folders = len(subfolders)
+            for idx, subfolder in enumerate(subfolders, 1):
+                console.print(
+                    f"[blue]Processing folder ({idx}/{total_folders}): {subfolder.name}[/blue]"
                 )
-
-                for idx, subfolder in enumerate(subfolders, 1):
-                    console.print(
-                        f"[cyan]Processing subfolder ({idx}/{len(subfolders)}): {subfolder.name}[/cyan]"
-                    )
-
-                    if self.backup_subfolder(subfolder):
-                        successful_backups.append(subfolder)
-                        if self.config["delete_source"]:
-                            self.safe_delete_subfolder(subfolder)
-                    else:
-                        failed_backups.append(subfolder)
-                    progress.update(backup_task, advance=1)
+                if self.backup_subfolder(subfolder):
+                    successful_backups.append(subfolder)
+                    if self.config["delete_source"]:
+                        self.safe_delete_subfolder(subfolder)
+                else:
+                    failed_backups.append(subfolder)
 
             # Generate report
             self.generate_report(successful_backups, failed_backups, start_time)

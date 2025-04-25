@@ -1,9 +1,0 @@
-{
-    "src_dir": "",
-    "dst_dir": "",
-    "log_dir": "",
-    "verify_copy": true,
-    "delete_source": false,
-    "excluded_patterns": [],
-    "backup_age_days": 30
-}
